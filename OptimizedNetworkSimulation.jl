@@ -4,6 +4,7 @@ using JLD2
 using ArgParse
 using StatsBase
 using FileIO
+using Dates
 #using Plots
 
 mutable struct NetworkParameters
@@ -188,12 +189,10 @@ function death(network::NetworkParameters)
 end
 
 function findMom(network::NetworkParameters, kID::Int64)
+    network.popFitness[kID] = 0.0 # offspring can't be parent
     fitWeights = weights(network.popFitness)
-    momIndex = kID
-    while(momIndex == kID)
-        momIndex = sample(1:network.popSize, fitWeights)
-    end
-    momIndex
+    momIndex = sample(1:network.popSize, fitWeights)
+    return momIndex
 end
 
 function birth(network::NetworkParameters, child::Int64, parent::Int64)
@@ -294,8 +293,10 @@ end
 function runSims(CL::Float64, BEN::Float64)
     dataArray = zeros(9)
     repSims = 10
-    for(x) in 1:repSims
 
+    for(x) in 1:repSims
+        start = now()
+        
         #initializes globalstuff structure with generic constructor
         network = NetworkParameters(BEN, CL)
 
@@ -340,6 +341,10 @@ function runSims(CL::Float64, BEN::Float64)
         dataArray[7] += network.meanCoopDefDistance
         dataArray[8] += network.meanDistInclusion
         dataArray[9] += network.meanCoopRatio
+
+        println("benefit = $BEN, clink = $CL, replicate = $x, elapse = $(canonicalize(Dates.CompoundPeriod(now()-start)))")
+        flush(stdout)
+
     end
     dataArray[:] ./= Float64(repSims)
     save("PBCDData_CL$(CL)_B$(BEN).jld2", "parameters", [CL, BEN], "meanPNC", dataArray[1], "meanPND", dataArray[2], "meanPR", dataArray[3], "meanDegree", dataArray[4], "meanCooperatorDegree", dataArray[5], "meanDefectorDegree", dataArray[6], "meanDistanceFromDefToCoop", dataArray[7], "meanDistanceInclusion", dataArray[8], "meanCooperationRatio", dataArray[9])
